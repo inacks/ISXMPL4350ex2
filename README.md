@@ -1,32 +1,65 @@
-# IS4350 I2C Modbus TCP Server – Arduino Uno Example
+# ISXMPL4350ex2 - IS4350 I2C Modbus TCP Server Simple Example for Arduino
 
-This example is powered by the IS4350, a dedicated I²C Modbus TCP Server chip that lets any microcontroller become a Modbus TCP server with just two wires (SDA + SCL) and a few lines of code.
+A minimal Arduino Uno example for the **IS4350**, the I2C Modbus TCP/IP Server chip by INACKS.
 
-No TCP/IP stack. No Ethernet library. No timers. No extra pins.  
-The IS4350 handles everything — your code just reads and writes registers over I²C, and the chip does the rest.
+The sketch brings the Modbus TCP server online and increments Holding Register 0 (HOLD_0) by 1 every second. Any Modbus TCP client (a PLC, SCADA system or PC tool) can read the value over Ethernet.
 
-Perfect for sensors, actuators, and any industrial equipment that needs to expose process data (speed, torque, current, status...) over a standard Modbus TCP network.
+No dedicated library is needed: the sketch uses only the standard Arduino `Wire` library and two short routines, one to read a register and one to write it.
 
-Learn more, get the datasheet, and buy at:  
-https://www.inacks.com/is4350
+## What the sketch does
 
----
+1. Writes an initial value to HOLD_0, so clients never read invalid data.
+2. Brings the Modbus server online by writing 1 to the `GO_ONLINE` register.
+3. Waits until the `STATUS` register reads 5 (Modbus server ready and listening).
+4. Increments HOLD_0 every second.
 
-## What this example does:
-- Brings the Modbus server online via DHCP (no network configuration needed)
-- Waits until the server is online and ready
-- Every second writes an incrementing value to Holding Register 0 (HOLD_0)
+By default, the IS4350 uses DHCP and a MAC address generated from its serial number, so no network configuration is needed.
 
----
+## Hardware
 
-## Wiring:
-- Arduino Uno A4 (SDA) → IS4350 SDA (with pull-up resistor to 3.3V/5V)
-- Arduino Uno A5 (SCL) → IS4350 SCL (with pull-up resistor to 3.3V/5V)
-- ADR pin on IS4350 tied to GND → I²C address 24 (0x18)
+- Arduino Uno
+- IS4350 (or the IS4350-M1 module)
+- 2 × 4.7 kΩ pull-up resistors
+- Ethernet connection to a network with a DHCP server
 
----
+## Wiring
 
-## Notes:
-- The IS4350 memory map uses 16-bit register addresses and 16-bit register values, transmitted MSB first (most significant byte first).
-- `GO_ONLINE` (register 65513) is only accessible via I²C and is not stored in flash, so it must be set to 1 every power-up.
-- The datasheet recommends leaving at least 100 ms between consecutive I²C operations.
+| Arduino Uno | IS4350           | Notes                              |
+|-------------|------------------|------------------------------------|
+| A4 (SDA)    | SDA              | 4.7 kΩ pull-up to 5 V              |
+| A5 (SCL)    | SCL              | 4.7 kΩ pull-up to 5 V              |
+| GND         | VSS              | Common ground                      |
+| —           | ADR → GND        | I2C address 24 (0x18)              |
+| —           | SPD → GND        | 100 kHz (Arduino Wire default)     |
+
+## Usage
+
+1. Open the `.ino` file in the Arduino IDE.
+2. Select **Arduino Uno** and upload.
+3. Open the Serial Monitor at **9600 baud**.
+
+Expected output:
+
+```
+STATUS: 3
+STATUS: 5
+Server online.
+HOLD_0 = 1
+HOLD_0 = 2
+...
+```
+
+4. Read Holding Register 0 from any Modbus TCP client on port 502. Use the IS4350's IP address, which you can read from its IP registers.
+
+## Key points
+
+- Register addresses and register values are 16-bit and are sent MSB first.
+- Reads use a repeated start (`Wire.endTransmission(false)`).
+- Leave a few milliseconds between consecutive I2C operations.
+- `GO_ONLINE` is 0 after every power-up, so the sketch sets it at startup.
+- If STATUS shows an error (101 and above), check the network cable and the MAC configuration. See the datasheet for the full list of status codes.
+
+## Documentation
+
+- IS4350 datasheet and product page: [www.inacks.com/is4350](https://www.inacks.com/is4350)
+- IS4350-M1 module: [www.inacks.com/is4350-m1](https://www.inacks.com/is4350-m1)
